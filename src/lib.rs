@@ -1,7 +1,4 @@
-use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    time::Duration,
-};
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 use anyhow::{Result, anyhow};
 use tokio::{
@@ -47,7 +44,7 @@ pub async fn handle_tcp_connections(
                     info!("Received error ({e}) when accepting TCP connection. Will close TCP receivivg task.")
                 }
             }}
-            _ = tokio::spawn(tokio::time::sleep(Duration::from_millis(100))), if tx.is_closed() => {
+            _ = tx.closed() => {
                 info!("MPSC channel was closed. Will close TCP receiving task.");
                 break;
             }
@@ -97,7 +94,7 @@ pub async fn handle_new_multicast_members(
                     }
                 }
             }
-            _ = tokio::spawn(tokio::time::sleep(Duration::from_millis(100))), if tx.is_closed() => {
+            _ = tx.closed() => {
                 info!("MPSC channel was closed. Will close multicast members task.");
                 break;
             }

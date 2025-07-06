@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    let (tx, rx) = tokio::sync::mpsc::channel(8);
+    let (tx, rx) = tokio::sync::mpsc::channel(10000);
     let tx1 = tx.clone();
     let handle_new_multicast_members =
         tokio::spawn(handle_new_multicast_members(tx1, multicast, local_ip));
