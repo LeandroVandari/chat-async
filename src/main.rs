@@ -43,8 +43,6 @@ async fn main() -> Result<()> {
         tokio::spawn(handle_new_multicast_members(tx1, multicast, local_ip));
 
     let handle_new_connections = tokio::spawn(handle_tcp_connections(tx, listener));
-
-    drop(rx);
     let (first, second) = tokio::join!(handle_new_multicast_members, handle_new_connections);
 
     first??;
