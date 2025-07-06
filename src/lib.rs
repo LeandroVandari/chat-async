@@ -41,10 +41,10 @@ pub async fn handle_tcp_connections(
             }
                 }
                 Err(e) => {
-                    info!("Received error ({e}) when accepting TCP connection. Will close TCP receivivg task.")
+                    info!("Received error ({e}) when accepting TCP connection. Will close TCP receivivg task.");
                 }
             }}
-            _ = tx.closed() => {
+            () = tx.closed() => {
                 info!("MPSC channel was closed. Will close TCP receiving task.");
                 break;
             }
@@ -86,7 +86,7 @@ pub async fn handle_new_multicast_members(
                                 }
                                 anyhow::Ok(())
                             });
-                        };
+                        }
                     }
                     Err(e) => {
                         info!("Error receiving multicast msg ({e}). Closing multicast members task.");
@@ -94,7 +94,7 @@ pub async fn handle_new_multicast_members(
                     }
                 }
             }
-            _ = tx.closed() => {
+            () = tx.closed() => {
                 info!("MPSC channel was closed. Will close multicast members task.");
                 break;
             }
