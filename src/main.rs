@@ -1,10 +1,13 @@
 use std::net::{self, SocketAddrV4};
 
 use anyhow::{Result, anyhow};
-use bytes::{Buf, Bytes, BytesMut};
-use chat_async::{MULTICAST_ADDRESS, SERVER_PORT, connect_to_multicast, parse_hi};
-use tokio::net::{TcpListener, TcpStream};
-use tracing::{info, info_span, trace, trace_span};
+use bytes::Bytes;
+use chat_async::{
+    MULTICAST_ADDRESS, SERVER_PORT, connect_to_multicast, handle_new_multicast_members,
+    handle_tcp_connections,
+};
+use tokio::net::TcpListener;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -35,43 +38,17 @@ async fn main() -> Result<()> {
         .await?;
 
     let (tx, rx) = tokio::sync::mpsc::channel(8);
-    let handle_new_multicast_members = tokio::spawn(async move {
-        let span = info_span!("New multicast member");
+    let tx1 = tx.clone();
+    let handle_new_multicast_members =
+        tokio::spawn(handle_new_multicast_members(tx1, multicast, local_ip));
 
-        let mut buf = [0; 9];
-        while let Ok(len) = multicast.recv(&mut buf).await {
-            if len == 0 {
-                info!(parent: &span, "Received length 0 from multicast.");
-                break;
-            }
-            if len == 8
-                && let Ok(addr) = parse_hi(&buf[..len])
-            {
-                if addr.ip() == &local_ip {
-                    continue;
-                }
-                info!(parent: &span, "Received HI from {addr}",);
-                let tx = tx.clone();
-                tokio::spawn(async move {
-                    tx.send(TcpStream::connect(addr).await?).await?;
-                    anyhow::Ok(())
-                });
-            };
-        }
+    let handle_new_connections = tokio::spawn(handle_tcp_connections(tx, listener));
 
-        anyhow::Ok(())
-    });
-
-    let handle_new_connections = tokio::spawn(async move {
-        while let Ok((_stream, addr)) = listener.accept().await {
-            info!("Connected to {addr}!");
-        }
-    });
-
+    drop(rx);
     let (first, second) = tokio::join!(handle_new_multicast_members, handle_new_connections);
 
     first??;
-    second?;
+    second??;
 
     Ok(())
 }

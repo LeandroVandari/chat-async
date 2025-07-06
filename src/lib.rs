@@ -1,14 +1,17 @@
 use std::net::{Ipv4Addr, SocketAddrV4};
 
-use anyhow::{Ok, Result, anyhow};
-use tokio::net::UdpSocket;
+use anyhow::{Result, anyhow};
+use tokio::{
+    net::{TcpListener, TcpStream, UdpSocket},
+    sync::mpsc,
+};
 use tracing::info;
 
 pub const SERVER_PORT: u16 = 4983;
 
 pub const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 
-#[tracing::instrument(name = "Enter multicast")]
+#[tracing::instrument(name = "Enter Multicast")]
 pub async fn connect_to_multicast() -> Result<UdpSocket> {
     info!(
         "Joining multicast on {}",
@@ -19,6 +22,57 @@ pub async fn connect_to_multicast() -> Result<UdpSocket> {
     socket.join_multicast_v4(MULTICAST_ADDRESS, std::net::Ipv4Addr::UNSPECIFIED)?;
 
     Ok(socket)
+}
+
+#[tracing::instrument(name = "TCP Connections", skip(tx, listener), fields(listener_port = %listener.local_addr().map(|addr| addr.port())?))]
+pub async fn handle_tcp_connections(
+    tx: mpsc::Sender<TcpStream>,
+    listener: TcpListener,
+) -> Result<()> {
+    // TODO: select over listener.accept and tx.is_closed in order to handle a graceful shutdown.
+    while let Ok((stream, addr)) = listener.accept().await {
+        info!("Connected to {addr}!");
+        if tx.send(stream).await.is_err() {
+            info!("Received error from mpsc channel. Will close TCP receiving task.");
+            break;
+        }
+    }
+
+    anyhow::Ok(())
+}
+
+#[tracing::instrument(name = "New Multicast Members", skip(tx, local_ip, multicast))]
+pub async fn handle_new_multicast_members(
+    tx: mpsc::Sender<TcpStream>,
+    multicast: UdpSocket,
+    local_ip: Ipv4Addr,
+) -> Result<()> {
+    let mut buf = [0; 9];
+    while let Ok(len) = multicast.recv(&mut buf).await {
+        if len == 0 {
+            info!("Received length 0 from multicast.");
+            break;
+        }
+        if len == 8
+            && let Ok(addr) = parse_hi(&buf[..len])
+        {
+            if addr.ip() == &local_ip {
+                continue;
+            }
+            info!("Received HI from {addr}",);
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                tx.send(TcpStream::connect(addr).await?).await?;
+                anyhow::Ok(())
+            });
+        };
+
+        if tx.is_closed() {
+            info!("Mpsc channel was closed. Exiting multicast connect task.");
+        }
+    }
+
+    anyhow::Ok(())
 }
 
 pub fn parse_hi(bytes: &[u8]) -> Result<SocketAddrV4> {
