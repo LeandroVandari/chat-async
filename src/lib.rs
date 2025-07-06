@@ -1,8 +1,12 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    time::Duration,
+};
 
 use anyhow::{Result, anyhow};
 use tokio::{
     net::{TcpListener, TcpStream, UdpSocket},
+    select,
     sync::mpsc,
 };
 use tracing::info;
@@ -29,12 +33,24 @@ pub async fn handle_tcp_connections(
     tx: mpsc::Sender<TcpStream>,
     listener: TcpListener,
 ) -> Result<()> {
-    // TODO: select over listener.accept and tx.is_closed in order to handle a graceful shutdown.
-    while let Ok((stream, addr)) = listener.accept().await {
-        info!("Connected to {addr}!");
-        if tx.send(stream).await.is_err() {
-            info!("Received error from mpsc channel. Will close TCP receiving task.");
-            break;
+    loop {
+        select! {
+            res = listener.accept() => {match res {
+                Ok((stream, addr)) => {
+                    info!("Connected to {addr}!");
+                    if tx.send(stream).await.is_err() {
+                        info!("Received error from mpsc channel. Will close TCP receiving task.");
+                        break;
+            }
+                }
+                Err(e) => {
+                    info!("Received error ({e}) when accepting TCP connection. Will close TCP receivivg task.")
+                }
+            }}
+            _ = tokio::spawn(tokio::time::sleep(Duration::from_millis(100))), if tx.is_closed() => {
+                info!("MPSC channel was closed. Will close TCP receiving task.");
+                break;
+            }
         }
     }
 
@@ -48,30 +64,44 @@ pub async fn handle_new_multicast_members(
     local_ip: Ipv4Addr,
 ) -> Result<()> {
     let mut buf = [0; 9];
-    while let Ok(len) = multicast.recv(&mut buf).await {
-        if len == 0 {
-            info!("Received length 0 from multicast.");
-            break;
-        }
-        if len == 8
-            && let Ok(addr) = parse_hi(&buf[..len])
-        {
-            if addr.ip() == &local_ip {
-                continue;
-            }
-            info!("Received HI from {addr}",);
-            let tx = tx.clone();
-            tokio::spawn(async move {
-                match TcpStream::connect(addr).await {
-                    Ok(stream) => tx.send(stream).await?,
-                    Err(e) => info!("Error connecting to {addr}: {e}")
-                }
-                anyhow::Ok(())
-            });
-        };
 
-        if tx.is_closed() {
-            info!("Mpsc channel was closed. Exiting multicast connect task.");
+    loop {
+        select! {
+            conn_len = multicast.recv(&mut buf) => {
+                match conn_len {
+                    Ok(len) => {
+                        if len == 0 {
+                            info!("Received length 0 from multicast.");
+                            break;
+                        }
+                        if len == 8
+                            && let Ok(addr) = parse_hi(&buf[..len])
+                        {
+                            if addr.ip() == &local_ip {
+                                continue;
+                            }
+                            info!("Received HI from {addr}",);
+                            let tx = tx.clone();
+                            tokio::spawn(async move {
+                                match TcpStream::connect(addr).await {
+                                    Ok(stream) => tx.send(stream).await?,
+                                    Err(e) => info!("Error connecting to {addr}: {e}")
+                                }
+                                anyhow::Ok(())
+                            });
+                        };
+                    }
+                    Err(e) => {
+                        info!("Error receiving multicast msg ({e}). Closing multicast members task.");
+                        break;
+                    }
+                }
+            }
+            _ = tokio::spawn(tokio::time::sleep(Duration::from_millis(100))), if tx.is_closed() => {
+                info!("MPSC channel was closed. Will close multicast members task.");
+                break;
+            }
+
         }
     }
 

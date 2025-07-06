@@ -15,7 +15,6 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     let multicast = connect_to_multicast().await?;
-
     let listener = TcpListener::bind("0.0.0.0:0").await?;
 
     let local_ip = match local_ip_address::local_ip()? {
@@ -43,6 +42,7 @@ async fn main() -> Result<()> {
         tokio::spawn(handle_new_multicast_members(tx1, multicast, local_ip));
 
     let handle_new_connections = tokio::spawn(handle_tcp_connections(tx, listener));
+
     let (first, second) = tokio::join!(handle_new_multicast_members, handle_new_connections);
 
     first??;
