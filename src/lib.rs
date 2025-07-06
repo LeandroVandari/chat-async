@@ -62,7 +62,10 @@ pub async fn handle_new_multicast_members(
             info!("Received HI from {addr}",);
             let tx = tx.clone();
             tokio::spawn(async move {
-                tx.send(TcpStream::connect(addr).await?).await?;
+                match TcpStream::connect(addr).await {
+                    Ok(stream) => tx.send(stream).await?,
+                    Err(e) => info!("Error connecting to {addr}: {e}")
+                }
                 anyhow::Ok(())
             });
         };
