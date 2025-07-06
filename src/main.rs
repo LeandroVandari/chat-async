@@ -1,10 +1,10 @@
 use std::net::{self, SocketAddrV4};
 
 use anyhow::{Result, anyhow};
-use bytes::{Bytes, BytesMut};
+use bytes::{Buf, Bytes, BytesMut};
 use chat_async::{MULTICAST_ADDRESS, SERVER_PORT, connect_to_multicast, parse_hi};
 use tokio::net::{TcpListener, TcpStream};
-use tracing::{info, info_span};
+use tracing::{info, info_span, trace, trace_span};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -19,10 +19,7 @@ async fn main() -> Result<()> {
         net::IpAddr::V4(addr) => addr,
         net::IpAddr::V6(_) => return Err(anyhow!("Incorrect type of address: need V4")),
     };
-    let listener_addr = SocketAddrV4::new(
-        local_ip,
-        listener.local_addr()?.port(),
-    );
+    let listener_addr = SocketAddrV4::new(local_ip, listener.local_addr()?.port());
     info!("Sending listener address ({listener_addr}) to multicast.");
     multicast
         .send_to(
@@ -41,35 +38,33 @@ async fn main() -> Result<()> {
     let handle_new_multicast_members = tokio::spawn(async move {
         let span = info_span!("New multicast member");
 
-        let mut buf = BytesMut::with_capacity(8);
-        while let Ok(len) = multicast.recv_buf(&mut buf).await {
+        let mut buf = [0; 9];
+        while let Ok(len) = multicast.recv(&mut buf).await {
             if len == 0 {
                 info!(parent: &span, "Received length 0 from multicast.");
                 break;
             }
             if len == 8
-                && let Ok(addr) = parse_hi(&buf[0..len])
+                && let Ok(addr) = parse_hi(&buf[..len])
             {
                 if addr.ip() == &local_ip {
                     continue;
                 }
-                info!(parent: &span, "Received message: {:?}",&buf[..len]);
+                info!(parent: &span, "Received HI from {addr}",);
                 let tx = tx.clone();
                 tokio::spawn(async move {
                     tx.send(TcpStream::connect(addr).await?).await?;
                     anyhow::Ok(())
                 });
-            }
+            };
         }
 
         anyhow::Ok(())
     });
 
     let handle_new_connections = tokio::spawn(async move {
-        loop {
-            while let Ok((_stream, addr)) = listener.accept().await {
-                info!("Connected to {addr}!");
-            }
+        while let Ok((_stream, addr)) = listener.accept().await {
+            info!("Connected to {addr}!");
         }
     });
 

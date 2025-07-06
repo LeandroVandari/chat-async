@@ -8,7 +8,7 @@ pub const SERVER_PORT: u16 = 4983;
 
 pub const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 
-#[tracing::instrument(name = "enter multicast")]
+#[tracing::instrument(name = "Enter multicast")]
 pub async fn connect_to_multicast() -> Result<UdpSocket> {
     info!(
         "Joining multicast on {}",
