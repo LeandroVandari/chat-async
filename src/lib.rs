@@ -29,16 +29,15 @@ pub async fn connect_to_multicast(address: SocketAddrV4) -> Result<UdpSocket> {
     Ok(socket)
 }
 
-#[tracing::instrument(name = "TCP Connections", skip(tx, listener), fields(listener_port = %listener.local_addr().map(|addr| addr.port())?))]
-pub async fn handle_tcp_connections(
+#[tracing::instrument(name = "Incoming Connections", skip(tx, listener), fields(listener_port = %listener.local_addr().map(|addr| addr.port())?))]
+pub async fn handle_incoming_connections(
     tx: mpsc::Sender<TcpStream>,
     listener: TcpListener,
 ) -> Result<()> {
     loop {
         select! {
             res = listener.accept() => {match res {
-                Ok((stream, addr)) => {
-                    info!("Connected to {addr}!");
+                Ok((stream, _)) => {
                     if tx.send(stream).await.is_err() {
                         info!("Received error from mpsc channel. Will close TCP receiving task.");
                         break;

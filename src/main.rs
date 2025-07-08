@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chat_async::{
     MULTICAST_ADDRESS, connect_to_multicast, get_my_ip::get_my_ip, handle_new_multicast_members,
-    handle_tcp_connections,
+    handle_incoming_connections,
 };
 use tokio::net::TcpListener;
 use tracing::info;
@@ -25,17 +25,26 @@ async fn main() -> Result<()> {
         )
         .await?;
 
-    let (tx, rx) = tokio::sync::mpsc::channel(8);
+    let (tx, mut rx) = tokio::sync::mpsc::channel(8);
     let tx1 = tx.clone();
     let handle_new_multicast_members =
         tokio::spawn(handle_new_multicast_members(tx1, multicast, my_ip));
 
-    let handle_new_connections = tokio::spawn(handle_tcp_connections(tx, listener));
+    let handle_incoming_connections = tokio::spawn(handle_incoming_connections(tx, listener));
 
-    let (first, second) = tokio::join!(handle_new_multicast_members, handle_new_connections);
+    let handle_tcp_streams = tokio::spawn(async move {
+        while let Some(stream) = rx.recv().await {
+            info!("Established TCP connection to {}", stream.peer_addr()?.ip());
+        }
+
+        anyhow::Ok(())
+    });
+
+    let (first, second, third) = tokio::join!(handle_new_multicast_members, handle_incoming_connections, handle_tcp_streams);
 
     first??;
     second??;
+    third??;
 
     Ok(())
 }
