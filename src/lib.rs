@@ -12,7 +12,7 @@ pub mod get_my_ip;
 
 pub const SERVER_PORT: u16 = 4983;
 
-pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
+pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(224, 0, 1, 123);
 
 pub const MULTICAST_ADDRESS: SocketAddrV4 = SocketAddrV4::new(MULTICAST_IP, SERVER_PORT);
 
