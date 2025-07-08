@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.98"
 bytes = "1.10.1"
-tokio = { version = "1.46.1", features = ["full"] }
+tokio = { version = "1.46.1", features = ["net", "rt", "sync", "macros", "rt-multi-thread"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 

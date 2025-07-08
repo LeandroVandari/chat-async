@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
 
     let handle_incoming_connections = tokio::spawn(handle_incoming_connections(tx, listener));
 
-    let handle_tcp_streams = tokio::spawn(async move {
+    let manage_tcp_streams = tokio::spawn(async move {
         while let Some(stream) = rx.recv().await {
             info!("Established TCP connection to {}", stream.peer_addr()?.ip());
         }
@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
         anyhow::Ok(())
     });
 
-    let (first, second, third) = tokio::join!(handle_new_multicast_members, handle_incoming_connections, handle_tcp_streams);
+    let (first, second, third) = tokio::join!(handle_new_multicast_members, handle_incoming_connections, manage_tcp_streams);
 
     first??;
     second??;
