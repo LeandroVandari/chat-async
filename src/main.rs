@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chat_async::{
-    connect_to_multicast, get_my_ip::get_my_ip, handle_new_multicast_members, handle_tcp_connections, MULTICAST_ADDRESS, SERVER_PORT
+    MULTICAST_ADDRESS, connect_to_multicast, get_my_ip::get_my_ip, handle_new_multicast_members,
+    handle_tcp_connections,
 };
 use tokio::net::TcpListener;
 use tracing::info;
@@ -19,9 +20,7 @@ async fn main() -> Result<()> {
     info!("Sending listener port ({port}) to multicast.");
     multicast
         .send_to(
-            &[
-                [b'H', b'I'], port.to_be_bytes()
-            ].concat(),
+            &[[b'H', b'I'], port.to_be_bytes()].concat(),
             MULTICAST_ADDRESS,
         )
         .await?;

@@ -16,15 +16,12 @@ pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 123);
 
 pub const MULTICAST_ADDRESS: SocketAddrV4 = SocketAddrV4::new(MULTICAST_IP, SERVER_PORT);
 
-
 #[tracing::instrument(name = "Enter Multicast")]
 pub async fn connect_to_multicast(address: SocketAddrV4) -> Result<UdpSocket> {
     if !address.ip().is_multicast() {
         return Err(anyhow!("Address must be multicast"));
     }
-    info!(
-        "Joining multicast on {address}",
-    );
+    info!("Joining multicast",);
     let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, address.port())).await?;
 
     socket.join_multicast_v4(*address.ip(), std::net::Ipv4Addr::UNSPECIFIED)?;
@@ -61,11 +58,11 @@ pub async fn handle_tcp_connections(
     anyhow::Ok(())
 }
 
-#[tracing::instrument(name = "New Multicast Members", skip(tx, multicast))]
+#[tracing::instrument(name = "New Multicast Members", skip(tx, multicast, my_ip))]
 pub async fn handle_new_multicast_members(
     tx: mpsc::Sender<TcpStream>,
     multicast: UdpSocket,
-    my_ip: Ipv4Addr
+    my_ip: Ipv4Addr,
 ) -> Result<()> {
     let mut buf = [0; 9];
     loop {
@@ -130,7 +127,7 @@ pub fn parse_hi(bytes: &[u8]) -> Result<u16> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{connect_to_multicast, MULTICAST_ADDRESS, MULTICAST_IP};
+    use crate::{MULTICAST_ADDRESS, MULTICAST_IP, connect_to_multicast};
 
     #[test]
     fn address_is_multicast() {
