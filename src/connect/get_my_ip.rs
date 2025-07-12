@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Result, anyhow};
 use tracing::trace;
 
-use crate::connect_to_multicast;
+use crate::connect::multicast::join::connect_to_multicast;
 
 ///
 /// Figure out this computer's IP.

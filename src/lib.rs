@@ -8,26 +8,13 @@ use tokio::{
 };
 use tracing::info;
 
-pub mod get_my_ip;
+pub mod connect;
 
 pub const SERVER_PORT: u16 = 4983;
 
 pub const MULTICAST_IP: Ipv4Addr = Ipv4Addr::new(224, 0, 1, 123);
 
 pub const MULTICAST_ADDRESS: SocketAddrV4 = SocketAddrV4::new(MULTICAST_IP, SERVER_PORT);
-
-#[tracing::instrument(name = "Enter Multicast")]
-pub async fn connect_to_multicast(address: SocketAddrV4) -> Result<UdpSocket> {
-    if !address.ip().is_multicast() {
-        return Err(anyhow!("Address must be multicast"));
-    }
-    info!("Joining multicast",);
-    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, address.port())).await?;
-
-    socket.join_multicast_v4(*address.ip(), std::net::Ipv4Addr::UNSPECIFIED)?;
-
-    Ok(socket)
-}
 
 #[tracing::instrument(name = "Incoming Connections", skip(tx, listener), fields(listener_port = %listener.local_addr().map(|addr| addr.port())?))]
 pub async fn handle_incoming_connections(
@@ -126,15 +113,10 @@ pub fn parse_hi(bytes: &[u8]) -> Result<u16> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{MULTICAST_ADDRESS, MULTICAST_IP, connect_to_multicast};
+    use crate::{MULTICAST_ADDRESS, MULTICAST_IP};
 
     #[test]
     fn address_is_multicast() {
         assert!(MULTICAST_IP.is_multicast());
-    }
-
-    #[tokio::test]
-    async fn connect_to_multicast_test() {
-        assert!(connect_to_multicast(MULTICAST_ADDRESS).await.is_ok())
     }
 }
