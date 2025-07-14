@@ -1,52 +1,70 @@
 use anyhow::Result;
 use chat_async::{
     MULTICAST_ADDRESS,
-    connect::{get_my_ip::get_my_ip, manage_tcp_streams, multicast::MulticastServer},
-    handle_incoming_connections, handle_new_multicast_members,
+    connect::{
+        get_my_ip::get_my_ip,
+        multicast::{
+            communicator::IpcCommunicator, message::MulticastMessage, server::MulticastServer,
+        },
+    },
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::mpsc};
 use tracing::info;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let subscriber = tracing_subscriber::FmtSubscriber::new();
-    tracing::subscriber::set_global_default(subscriber)?;
+// Initialize the Runtime manually because `procspawn::init()` must be the first thing called, otherwise a runtime
+// already exists but we can't get a handle to it
+fn main() -> Result<()> {
+    procspawn::init();
+    let body = async {
+        let subscriber = tracing_subscriber::FmtSubscriber::new();
+        tracing::subscriber::set_global_default(subscriber)?;
 
-    /*
-       let multicast_server = MulticastServer::join(MULTICAST_ADDRESS).await;
+        /*
+           let multicast_server = MulticastServer::join(MULTICAST_ADDRESS).await;
 
-        let available_chat_servers = multicast_server.get_available_servers().await;
+            let available_chat_servers = multicast_server.get_available_servers().await;
 
-        // selecionar servidor
+            // selecionar servidor
 
-    */
+        */
 
-    let mut multicast_server = MulticastServer::join(MULTICAST_ADDRESS).await?;
-    let listener = TcpListener::bind("0.0.0.0:0").await?;
-    let port = listener.local_addr()?.port();
-    let my_ip = get_my_ip().await?;
+        let (tx, _rx) = mpsc::channel::<MulticastMessage>(8);
 
-    info!("Sending listener port ({port}) to multicast.");
-    /*  multicast_server
-    .send(
-        &[[b'H', b'I'], port.to_be_bytes()].concat(),
-    )
-    .await?; */
+        let _multicast_server =
+            <MulticastServer<_, IpcCommunicator>>::join(MULTICAST_ADDRESS, tx).await?;
+        let listener = TcpListener::bind("0.0.0.0:0").await?;
+        let port = listener.local_addr()?.port();
+        let _my_ip = get_my_ip().await?;
 
-    /* let (tx, rx) = tokio::sync::mpsc::channel(8);
-    let tx1 = tx.clone();
-    let handle_new_multicast_members =
-        tokio::spawn(handle_new_multicast_members(tx1, multicast, my_ip));
+        info!("Sending listener port ({port}) to multicast.");
 
-    let handle_incoming_connections = tokio::spawn(handle_incoming_connections(tx, listener));
+        /*  multicast_server
+        .send(
+            &[[b'H', b'I'], port.to_be_bytes()].concat(),
+        )
+        .await?; */
 
-    let manage_tcp_streams = tokio::spawn(manage_tcp_streams(rx));
+        /* let (tx, rx) = tokio::sync::mpsc::channel(8);
+        let tx1 = tx.clone();
+        let handle_new_multicast_members =
+            tokio::spawn(handle_new_multicast_members(tx1, multicast, my_ip));
 
-    let (first, second, third) = tokio::join!(handle_new_multicast_members, handle_incoming_connections, manage_tcp_streams);
+        let handle_incoming_connections = tokio::spawn(handle_incoming_connections(tx, listener));
 
-    first??;
-    second??;
-    third??; */
+        let manage_tcp_streams = tokio::spawn(manage_tcp_streams(rx));
 
-    Ok(())
+        let (first, second, third) = tokio::join!(handle_new_multicast_members, handle_incoming_connections, manage_tcp_streams);
+
+        first??;
+        second??;
+        third??; */
+
+        Ok(())
+    };
+
+    return tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed building the Runtime")
+        .block_on(body);
 }

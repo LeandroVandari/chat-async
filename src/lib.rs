@@ -113,7 +113,7 @@ pub fn parse_hi(bytes: &[u8]) -> Result<u16> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{MULTICAST_ADDRESS, MULTICAST_IP};
+    use crate::MULTICAST_IP;
 
     #[test]
     fn address_is_multicast() {
