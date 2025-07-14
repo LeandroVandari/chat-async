@@ -19,15 +19,6 @@ fn main() -> Result<()> {
         let subscriber = tracing_subscriber::FmtSubscriber::new();
         tracing::subscriber::set_global_default(subscriber)?;
 
-        /*
-           let multicast_server = MulticastServer::join(MULTICAST_ADDRESS).await;
-
-            let available_chat_servers = multicast_server.get_available_servers().await;
-
-            // selecionar servidor
-
-        */
-
         let (tx, _rx) = mpsc::channel::<MulticastMessage>(8);
 
         let _multicast_server =

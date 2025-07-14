@@ -55,8 +55,6 @@ impl AsyncTryFromSocketAddr for IpcCommunicator {
                     );
                     let p = IpcCommunicator::spawn_communicator_process();
                     info!("Communicator process spawned with ID: {:?}", p.pid());
-                    /* // forget p so it doesn't get dropped when we close this program
-                    std::mem::forget(p); */
 
                     loop {
                         if let Ok(conn) = IpcStream::connect(
