@@ -15,9 +15,7 @@ pub trait Message: Debug + Encode {
 }
 
 impl Message for () {
-    fn join() -> Self {
-        
-    }
+    fn join() -> Self {}
 }
 
 impl Message for MulticastMessage {

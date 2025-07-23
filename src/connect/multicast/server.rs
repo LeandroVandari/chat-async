@@ -8,7 +8,6 @@ use crate::connect::multicast::communicator::{Communicator, SocketCommunicator};
 use super::message::Message;
 
 /// Handles communication with the multicast and mantains an updated list with all of the open servers.
-/// #[tracing::instrument(skip(buf))]
 #[derive(Debug)]
 pub struct MulticastServer<M: Message, C: Communicator = SocketCommunicator> {
     communicator: C,
