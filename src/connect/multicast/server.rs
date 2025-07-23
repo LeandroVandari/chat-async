@@ -41,7 +41,7 @@ impl<M: Message, C: Communicator> MulticastServer<M, C> {
 
         let mut server = Self {
             communicator: C::try_from_socket_addr(address).await?,
-            buf: buf,
+            buf,
             sender: msg_sender,
         };
 

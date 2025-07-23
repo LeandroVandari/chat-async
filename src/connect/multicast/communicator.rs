@@ -133,11 +133,9 @@ impl IpcCommunicator {
 }
 
 impl Communicator for IpcCommunicator {
-    fn communicate(&self, bytes: &[u8]) -> impl Future<Output = Result<usize, io::Error>> {
-        async move {
+    async fn communicate(&self, bytes: &[u8]) -> Result<usize, io::Error> {
             info!("Communicating: {bytes:?}");
             Ok(0)
-        }
     }
 }
 

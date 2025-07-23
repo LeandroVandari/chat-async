@@ -53,9 +53,9 @@ fn main() -> Result<()> {
         Ok(())
     };
 
-    return tokio::runtime::Builder::new_multi_thread()
+    tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("Failed building the Runtime")
-        .block_on(body);
+        .block_on(body)
 }

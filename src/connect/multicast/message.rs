@@ -16,7 +16,7 @@ pub trait Message: Debug + Encode {
 
 impl Message for () {
     fn join() -> Self {
-        ()
+        
     }
 }
 
