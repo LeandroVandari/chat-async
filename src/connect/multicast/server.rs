@@ -33,7 +33,6 @@ impl<M: Message, C: Communicator> MulticastServer<M, C> {
 }
 
 impl<M: Message, C: Communicator> MulticastServer<M, C> {
-    /// Joins the specified multicast and starts a background tas
     #[tracing::instrument(skip(msg_sender))]
     pub async fn join(address: SocketAddrV4, msg_sender: Sender<M>) -> Result<Self> {
         let buf = [0; 4096];
