@@ -27,7 +27,8 @@ impl IpcCommunicator {
                 .build()
                 .unwrap();
 
-            rt.block_on(Self::communicator_function(multicast_addr))
+
+            rt.block_on(Self::communicator_function(multicast_addr)).inspect_err(|e| tracing::error!("Error on communicator function: {e}")) 
         })
     }
 
