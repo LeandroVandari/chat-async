@@ -22,7 +22,7 @@ impl super::AsyncTryFromSocketAddr for SocketCommunicator {
 }
 
 impl Communicator for SocketCommunicator {
-    async fn communicate(&self, bytes: &[u8]) -> Result<usize, io::Error> {
+    async fn communicate(&mut self, bytes: &[u8]) -> Result<usize, io::Error> {
         self.socket.send_to(bytes, self.address).await
     }
 }

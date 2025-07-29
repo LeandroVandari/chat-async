@@ -10,7 +10,7 @@ pub use socket::SocketCommunicator;
 
 pub trait Communicator: AsyncTryFromSocketAddr + Debug {
     #[allow(async_fn_in_trait)]
-    async fn communicate(&self, bytes: &[u8]) -> Result<usize, io::Error>;
+    async fn communicate(&mut self, bytes: &[u8]) -> Result<usize, io::Error>;
 }
 
 mod error {
