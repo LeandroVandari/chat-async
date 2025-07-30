@@ -70,7 +70,8 @@ impl IpcCommunicator {
         tokio::spawn(Self::accept_ipc_connections(listener, t_sender, t_receiver));
 
         tokio::spawn(async move {
-            let mut buf = vec![0; 4096];
+            // This has to be a BytesMut. For some reason, a simple Vec<u8> *does not work*
+            let mut buf = bytes::BytesMut::with_capacity(4096);
             let mut receivers = Vec::new();
             let mut remove = Vec::new();
             loop {
@@ -85,8 +86,8 @@ impl IpcCommunicator {
                             IPC_CONNECTIONS.fetch_sub(1, std::sync::atomic::Ordering::Release);
                             remove.push(i);
                         }
-                        Ok(n) => {
-                            info!("Received message from IPC connection: {:?}", &buf[..n])
+                        Ok(_) => {
+                            info!("Received message from IPC connection: {:?}", &buf[..])
                         }
                         Err(e) => tracing::error!("Error reading from IPC connection: {e}"),
                     }
