@@ -103,16 +103,18 @@ impl IpcCommunicator {
         });
 
         let mut interval = tokio::time::interval(Duration::from_secs(10));
+        interval.tick().await;
         let check_end = tokio::spawn(async move {
             loop {
-                interval.tick().await;
+                
                 if IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Acquire) == 0 {
+                    interval.tick().await;
+                    if IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Acquire) == 0 {
                     info!("10 seconds without any connections. Quitting multicast process...");
-                    break;
-                } else {
-                    info!("Still running...");
+                    break;}
                 }
             }
+            tokio::task::yield_now().await;
         });
 
         check_end.await.unwrap();

@@ -21,13 +21,14 @@ fn main() -> Result<()> {
 
         let (tx, _rx) = mpsc::channel::<MulticastMessage>(8);
 
-        let _multicast_server =
+        let mut multicast_server =
             <MulticastServer<_, IpcCommunicator>>::join(MULTICAST_ADDRESS, tx).await?;
         let listener = TcpListener::bind("0.0.0.0:0").await?;
         let port = listener.local_addr()?.port();
         let _my_ip = get_my_ip().await?;
 
         info!("Sending listener port ({port}) to multicast.");
+        multicast_server.send(MulticastMessage::NewServer { port }).await?;
 
         /*  multicast_server
         .send(
