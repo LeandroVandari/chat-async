@@ -106,12 +106,12 @@ impl IpcCommunicator {
         interval.tick().await;
         let check_end = tokio::spawn(async move {
             loop {
-                
                 if IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Acquire) == 0 {
                     interval.tick().await;
                     if IPC_CONNECTIONS.load(std::sync::atomic::Ordering::Acquire) == 0 {
-                    info!("10 seconds without any connections. Quitting multicast process...");
-                    break;}
+                        info!("10 seconds without any connections. Quitting multicast process...");
+                        break;
+                    }
                 }
             }
             tokio::task::yield_now().await;

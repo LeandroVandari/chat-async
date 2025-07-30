@@ -28,7 +28,9 @@ fn main() -> Result<()> {
         let _my_ip = get_my_ip().await?;
 
         info!("Sending listener port ({port}) to multicast.");
-        multicast_server.send(MulticastMessage::NewServer { port }).await?;
+        multicast_server
+            .send(MulticastMessage::NewServer { port })
+            .await?;
 
         /*  multicast_server
         .send(
